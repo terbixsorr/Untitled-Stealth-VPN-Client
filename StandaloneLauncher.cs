@@ -109,10 +109,11 @@ namespace UntitledStealthLauncher {
             string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             string appDir = Path.Combine(localAppData, "Programs", "UntitledStealth");
             string targetExe = Path.Combine(appDir, "UntitledStealth.exe");
-            string markerFile = Path.Combine(appDir, ".v100_installed");
+            string ffmpegDll = Path.Combine(appDir, "ffmpeg.dll");
+            string markerFile = Path.Combine(appDir, ".v100_fixed_installed");
 
-            // Если уже распаковано — запускаем моментально
-            if (File.Exists(targetExe) && File.Exists(markerFile)) {
+            // Если уже распаковано и ffmpeg на месте — запускаем моментально
+            if (File.Exists(targetExe) && File.Exists(markerFile) && File.Exists(ffmpegDll)) {
                 LaunchApp(targetExe, appDir, args);
                 return;
             }
@@ -124,6 +125,15 @@ namespace UntitledStealthLauncher {
             Thread worker = new Thread(() => {
                 try {
                     splash.SetStatus("Распаковка компонентов Untitled Stealth...");
+
+                    try {
+                        foreach (var p in Process.GetProcessesByName("UntitledStealth")) {
+                            try { p.Kill(); p.WaitForExit(1000); } catch {}
+                        }
+                        foreach (var p in Process.GetProcessesByName("sing-box")) {
+                            try { p.Kill(); p.WaitForExit(1000); } catch {}
+                        }
+                    } catch {}
 
                     if (!Directory.Exists(appDir)) {
                         Directory.CreateDirectory(appDir);
@@ -176,12 +186,6 @@ namespace UntitledStealthLauncher {
                                 }
                             }
 
-                            // Копируем electron.exe как UntitledStealth.exe для красивого отображения в процессах
-                            string electronExe = Path.Combine(appDir, "node_modules", "electron", "dist", "electron.exe");
-                            if (File.Exists(electronExe) && !File.Exists(targetExe)) {
-                                File.Copy(electronExe, targetExe, true);
-                            }
-
                             // Создаем ярлык на рабочем столе с правами Администратора
                             CreateDesktopShortcut(targetExe, appDir);
 
@@ -217,14 +221,17 @@ namespace UntitledStealthLauncher {
             try {
                 string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 string lnkPath = Path.Combine(desktop, "Untitled Stealth.lnk");
-                string iconPath = Path.Combine(workDir, "icons", "app.ico");
+                string iconPath = Path.Combine(workDir, "resources", "app", "icons", "app.ico");
+                if (!File.Exists(iconPath)) {
+                    iconPath = Path.Combine(workDir, "icons", "app.ico");
+                }
 
                 Type shellType = Type.GetTypeFromProgID("WScript.Shell");
                 if (shellType != null) {
                     dynamic shell = Activator.CreateInstance(shellType);
                     dynamic shortcut = shell.CreateShortcut(lnkPath);
                     shortcut.TargetPath = targetExe;
-                    shortcut.Arguments = "main.js";
+                    shortcut.Arguments = "";
                     shortcut.WorkingDirectory = workDir;
                     shortcut.Description = "Untitled Stealth - Ультра-быстрый VPN клиент";
                     if (File.Exists(iconPath)) {
@@ -246,9 +253,8 @@ namespace UntitledStealthLauncher {
             ProcessStartInfo psi = new ProcessStartInfo();
             psi.FileName = exePath;
             psi.WorkingDirectory = workDir;
-            psi.Arguments = "main.js";
             if (args != null && args.Length > 0) {
-                psi.Arguments += " " + string.Join(" ", args);
+                psi.Arguments = string.Join(" ", args);
             }
             psi.UseShellExecute = true;
             psi.Verb = "runas"; // Запуск от имени Администратора для TUN

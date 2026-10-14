@@ -531,16 +531,18 @@ function isElevated() {
 }
 
 function relaunchAsAdmin() {
-  const electronExe = "C:\\C41A~1\\node_modules\\electron\\dist\\electron.exe";
-  const mainJs = "C:\\C41A~1\\main.js";
-  const workDir = "C:\\C41A~1";
-
   // КРИТИЧЕСКИ ВАЖНО: Освобождаем single instance lock, иначе новый процесс увидит занятый лок и сразу закроется
   try {
     app.releaseSingleInstanceLock();
   } catch {}
 
-  const psCmd = `Start-Process -FilePath '${electronExe}' -ArgumentList '${mainJs}' -WorkingDirectory '${workDir}' -Verb RunAs`;
+  const currentExe = process.execPath;
+  const currentDir = path.dirname(currentExe);
+  // Если запущен как упакованный UntitledStealth.exe (не dev electron), аргумент main.js передавать не нужно
+  const isPackaged = !currentExe.toLowerCase().endsWith("electron.exe");
+  const args = isPackaged ? "" : `'${path.join(__dirname, "main.js")}'`;
+
+  const psCmd = `Start-Process -FilePath '${currentExe}' ${args ? "-ArgumentList " + args : ""} -WorkingDirectory '${currentDir}' -Verb RunAs`;
   const child = spawn("powershell.exe", ["-NoProfile", "-Command", psCmd], {
     detached: true,
     stdio: "ignore"

@@ -18,13 +18,44 @@ async function main() {
   const exeSize = fs.statSync(exePath).size;
   console.log(`Размер EXE: ${(exeSize / 1024 / 1024).toFixed(2)} MB`);
 
-  // 1. Создаем Release
-  console.log("1. Создание Release v1.0.0 на GitHub...");
-  const releaseBody = {
-    tag_name: "v1.0.0",
-    target_commitish: "main",
-    name: "Untitled Stealth v1.0.0 — Релиз автономного VPN-клиента",
-    body: `## ⚡ Релиз Untitled Stealth v1.0.0
+  // 1. Получаем или создаем Release
+  console.log("1. Проверка Release v1.0.0 на GitHub...");
+  let relData = null;
+  const getRelRes = await fetch(`https://api.github.com/repos/${repo}/releases/tags/v1.0.0`, {
+    headers: {
+      "Authorization": "token " + token,
+      "Accept": "application/vnd.github.v3+json",
+      "User-Agent": "NodeJS-ReleaseUploader"
+    }
+  });
+
+  if (getRelRes.ok) {
+    relData = await getRelRes.json();
+    console.log(`Существующий релиз найден! ID: ${relData.id}`);
+
+    // Если ассет уже есть — удаляем его перед повторной заливкой
+    if (relData.assets && relData.assets.length > 0) {
+      for (const asset of relData.assets) {
+        if (asset.name === "UntitledStealth-v1.0.0.exe") {
+          console.log(`Удаление старого ассета ${asset.name} (ID: ${asset.id})...`);
+          await fetch(`https://api.github.com/repos/${repo}/releases/assets/${asset.id}`, {
+            method: "DELETE",
+            headers: {
+              "Authorization": "token " + token,
+              "Accept": "application/vnd.github.v3+json",
+              "User-Agent": "NodeJS-ReleaseUploader"
+            }
+          });
+          console.log("Старый ассет удален.");
+        }
+      }
+    }
+  } else {
+    const releaseBody = {
+      tag_name: "v1.0.0",
+      target_commitish: "main",
+      name: "Untitled Stealth v1.0.0 — Релиз автономного VPN-клиента",
+      body: `## ⚡ Релиз Untitled Stealth v1.0.0
 
 Первый стабильный релиз автономного десктопного VPN-клиента **Untitled Stealth** для Windows.
 
@@ -41,28 +72,29 @@ async function main() {
 - 📊 **Живая телеметрия**: пинг до сервера, графики и счетчики скорости скачивания и отдачи.
 - 🎨 **Obsidian Cyberpunk UI**: современный темный интерфейс.
 `,
-    draft: false,
-    prerelease: false
-  };
+      draft: false,
+      prerelease: false
+    };
 
-  const relRes = await fetch(`https://api.github.com/repos/${repo}/releases`, {
-    method: "POST",
-    headers: {
-      "Authorization": "token " + token,
-      "Accept": "application/vnd.github.v3+json",
-      "User-Agent": "NodeJS-ReleaseUploader",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(releaseBody)
-  });
+    const relRes = await fetch(`https://api.github.com/repos/${repo}/releases`, {
+      method: "POST",
+      headers: {
+        "Authorization": "token " + token,
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "NodeJS-ReleaseUploader",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(releaseBody)
+    });
 
-  const relData = await relRes.json();
-  if (!relRes.ok) {
-    console.error("Ошибка создания релиза:", relData);
-    process.exit(1);
+    relData = await relRes.json();
+    if (!relRes.ok) {
+      console.error("Ошибка создания релиза:", relData);
+      process.exit(1);
+    }
+    console.log(`Релиз успешно создан! ID: ${relData.id}`);
   }
 
-  console.log(`Релиз успешно создан! ID: ${relData.id}`);
   console.log(`URL релиза: ${relData.html_url}`);
 
   // 2. Загружаем EXE ассет
