@@ -1,0 +1,20 @@
+{
+  "name": "untitled-stealth",
+  "version": "1.0.0",
+  "description": "Untitled Stealth - Universal VPN & Proxy Desktop Client",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "vless",
+    "vpn",
+    "proxy",
+    "sing-box"
+  ],
+  "author": "Untitled",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.3.3"
+  }
+}

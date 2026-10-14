@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Untitled Stealth</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="stealth-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-logo">
+          <span class="logo-text">U</span>
+        </div>
+        <div class="brand-info">
+          <div class="title">UNTITLED</div>
+          <div class="subtitle">STEALTH PROXY</div>
+        </div>
+      </div>
+      <button id="openOptionsBtn" class="icon-btn" title="Настройки">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <!-- VPN Link Import Section -->
+    <div class="link-import-card">
+      <div class="import-header">
+        <span class="import-title">ПОДКЛЮЧЕНИЕ ПО ССЫЛКЕ</span>
+        <span class="import-badges">VLESS • VMess • SS</span>
+      </div>
+      <div class="import-input-wrap">
+        <input type="text" id="vpnUrlInput" placeholder="Вставьте vless://, vmess://, ss://..." autocomplete="off" spellcheck="false">
+        <button id="connectUrlBtn" class="import-btn" title="Подключить">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+      <div class="active-profile-info" id="activeProfileInfo">
+        <span class="profile-dot"></span>
+        <span class="profile-name" id="activeProfileName">Ядро: Ожидание ссылки</span>
+      </div>
+    </div>
+
+    <!-- Main Power Area -->
+    <div class="power-section">
+      <div class="power-ring-outer" id="powerRing">
+        <button id="toggleBtn" class="power-button" title="Включить / Выключить">
+          <svg class="power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+            <line x1="12" y1="2" x2="12" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="status-text" id="statusText">ОТКЛЮЧЕНО</div>
+      
+      <div class="ping-badge" id="pingBadge" title="Проверить задержку">
+        <span class="ping-dot"></span>
+        <span id="pingValue">— ms</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="section-title">РЕЖИМ МАРШРУТИЗАЦИИ</div>
+    <div class="mode-pills">
+      <button class="mode-pill active" data-mode="smart" title="Проксируются только заблокированные сайты (YouTube, Discord и др.)">
+        <span class="pill-title">Умный</span>
+        <span class="pill-desc">Только список</span>
+      </button>
+      <button class="mode-pill" data-mode="global" title="Все сайты направляются через прокси">
+        <span class="pill-title">Все сайты</span>
+        <span class="pill-desc">Глобальный</span>
+      </button>
+      <button class="mode-pill" data-mode="bypass" title="Все сайты через прокси, кроме сайтов из списка">
+        <span class="pill-title">Обход</span>
+        <span class="pill-desc">Кроме списка</span>
+      </button>
+    </div>
+
+    <!-- Current Tab Quick Action -->
+    <div class="quick-action" id="quickActionArea" style="display: none;">
+      <div class="quick-info">
+        <span class="quick-domain" id="currentDomain">example.com</span>
+      </div>
+      <button id="addCurrentDomainBtn" class="quick-btn">
+        <span>+ В список</span>
+      </button>
+    </div>
+
+    <!-- Footer info -->
+    <footer class="footer">
+      <span class="footer-status" id="footerEndpoint">127.0.0.1:10808 (Sing-Box)</span>
+      <span class="footer-version">v1.1</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

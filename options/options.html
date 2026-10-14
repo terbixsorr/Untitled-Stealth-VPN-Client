@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Untitled Stealth — Настройки</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">U</div>
+        <div class="brand-text">
+          <h2>UNTITLED</h2>
+          <span>STEALTH DASHBOARD</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a href="#servers" class="nav-item active" data-tab="servers">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          Прокси-серверы
+        </a>
+        <a href="#domains" class="nav-item" data-tab="domains">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          Список сайтов (PAC)
+        </a>
+        <a href="#guide" class="nav-item" data-tab="guide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Инструкция (Happ / VLESS)
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span>Untitled Stealth v1.0.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Tab 1: Servers -->
+      <section id="tab-servers" class="tab-pane active">
+        <div class="pane-header">
+          <div>
+            <h1>Прокси-серверы</h1>
+            <p>Управление точками подключения (SOCKS5, HTTP, HTTPS)</p>
+          </div>
+          <button id="addServerBtn" class="btn btn-primary">+ Добавить прокси</button>
+        </div>
+
+        <div class="card-grid" id="serversList"></div>
+
+        <!-- Add Server Modal / Form -->
+        <div class="card form-card" id="serverFormCard" style="display: none;">
+          <h3 id="formTitle">Новый прокси-сервер</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Название</label>
+              <input type="text" id="srvName" placeholder="Например: Мой сервер VLESS / Happ">
+            </div>
+            <div class="form-group">
+              <label>Протокол</label>
+              <select id="srvType">
+                <option value="socks5">SOCKS5 (рекомендуется)</option>
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Хост (IP или Домен)</label>
+              <input type="text" id="srvHost" placeholder="127.0.0.1">
+            </div>
+            <div class="form-group">
+              <label>Порт</label>
+              <input type="number" id="srvPort" placeholder="10808">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="saveServerBtn" class="btn btn-success">Сохранить</button>
+            <button id="cancelServerBtn" class="btn btn-secondary">Отмена</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 2: Domains -->
+      <section id="tab-domains" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1>Список доменов (Умный обход)</h1>
+            <p>В режиме «Умный» только эти сайты и их поддомены открываются через прокси</p>
+          </div>
+          <div class="pane-actions">
+            <button id="resetDomainsBtn" class="btn btn-secondary">Сбросить по умолчанию</button>
+            <button id="saveDomainsBtn" class="btn btn-primary">Сохранить изменения</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-group">
+            <label>Добавление нового домена</label>
+            <div class="input-inline">
+              <input type="text" id="newDomainInput" placeholder="например: discord.com или youtube.com">
+              <button id="addNewDomainBtn" class="btn btn-primary">Добавить</button>
+            </div>
+          </div>
+
+          <div class="domain-stats">
+            <span>Всего доменов в списке: <strong id="domainCount">0</strong></span>
+          </div>
+
+          <div class="domain-tags" id="domainTagsContainer"></div>
+
+          <div class="form-group" style="margin-top: 24px;">
+            <label>Быстрое редактирование всего списка (по одному сайту на строке):</label>
+            <textarea id="rawDomainsTextarea" rows="8" spellcheck="false"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 3: Guide -->
+      <section id="tab-guide" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1>Как это работает с Happ, Xray и VLESS</h1>
+            <p>Руководство по быстрой связке браузера и лаунчера</p>
+          </div>
+        </div>
+
+        <div class="card guide-card">
+          <div class="guide-step">
+            <div class="step-badge">1</div>
+            <div class="step-content">
+              <h3>Как браузер понимает VLESS?</h3>
+              <p>Браузеры напрямую не умеют шифровать трафик протоколами VLESS Reality или Hysteria. Вместо этого они подключаются к локальному SOCKS5/HTTP порту лаунчера на вашем компьютере (например, <code>127.0.0.1:10808</code>).</p>
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="step-badge">2</div>
+            <div class="step-content">
+              <h3>Стандартные порты популярных клиентов:</h3>
+              <ul class="port-list">
+                <li><strong>Happ / V2rayN / Xray:</strong> SOCKS5 порт <code>127.0.0.1:10808</code> или HTTP <code>127.0.0.1:10809</code></li>
+                <li><strong>Sing-box / Hiddify:</strong> SOCKS5/Mixed порт <code>127.0.0.1:2080</code></li>
+                <li><strong>Shadowrocket / Streisand:</strong> SOCKS5 порт <code>127.0.0.1:1080</code></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="step-badge">3</div>
+            <div class="step-content">
+              <h3>Преимущество умного режима (Smart PAC):</h3>
+              <p>Вам больше не нужно включать глобальный VPN для всего ПК. Банковские сайты, Госуслуги и российские сервисы продолжают работать напрямую на полной скорости, а заблокированные ресурсы автоматически идут через ваш прокси-туннель.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

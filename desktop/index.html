@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Untitled Stealth</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Custom Draggable Titlebar -->
+  <header class="titlebar">
+    <div class="titlebar-drag">
+      <div class="app-icon">U</div>
+      <div class="app-brand">UNTITLED <span>STEALTH</span> <small>v2.0</small></div>
+    </div>
+    <div class="titlebar-controls">
+      <button id="minBtn" class="win-btn" title="Свернуть">
+        <svg width="10" height="10" viewBox="0 0 10 10">
+          <line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" stroke-width="1.5"></line>
+        </svg>
+      </button>
+      <button id="maxBtn" class="win-btn" title="Развернуть">
+        <svg width="10" height="10" viewBox="0 0 10 10">
+          <rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+        </svg>
+      </button>
+      <button id="closeBtn" class="win-btn close" title="В трей">
+        <svg width="10" height="10" viewBox="0 0 10 10">
+          <line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1.5"></line>
+          <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1.5"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- App Main Layout -->
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Обзор</span>
+        </button>
+
+        <button class="nav-item" data-tab="servers">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          <span>Серверы</span>
+          <span class="badge" id="serversCountBadge">0</span>
+        </button>
+
+        <button class="nav-item" data-tab="routing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span>Маршруты</span>
+        </button>
+
+        <button class="nav-item" data-tab="logs">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span>Журнал</span>
+        </button>
+
+        <button class="nav-item" data-tab="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Настройки</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-status">
+        <div class="status-indicator" id="sidebarDot"></div>
+        <div class="status-info">
+          <span class="status-title" id="sidebarStatus">ОТКЛЮЧЕНО</span>
+          <span class="status-ip" id="sidebarEndpoint">127.0.0.1:10808</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Panes -->
+    <main class="main-panel">
+      <!-- ==================== TAB 1: ОБЗОР (DASHBOARD) ==================== -->
+      <section id="tab-dashboard" class="tab-pane active">
+        <!-- Quick URL Import -->
+        <div class="quick-import-bar">
+          <div class="import-input-wrapper">
+            <svg class="import-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <input type="text" id="dashLinkInput" placeholder="Вставьте vless://, hysteria2://, ss:// или ссылку подписки..." spellcheck="false">
+          </div>
+          <button id="dashConnectBtn" class="btn btn-primary" title="Подключить узел">
+            <span>Подключить</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Hero Hub: Power Shield & Telemetry -->
+        <div class="dashboard-hero">
+          <!-- Power Shield -->
+          <div class="hero-center">
+            <div class="power-ring-wrapper" id="powerRing">
+              <div class="power-pulse-ring"></div>
+              <button id="mainPowerBtn" class="power-btn" title="Включить / Выключить">
+                <svg class="power-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                  <line x1="12" y1="2" x2="12" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+
+            <div class="hero-status-box">
+              <div class="hero-status-text" id="heroStatusText">ОТКЛЮЧЕНО</div>
+              <div class="hero-timer" id="heroTimer">00:00:00</div>
+            </div>
+
+            <div class="hero-metrics">
+              <div class="metric-pill" id="pingMetricPill" title="Нажмите для проверки пинга">
+                <span class="metric-dot" id="pingDot"></span>
+                <span class="metric-label">ПИНГ:</span>
+                <span class="metric-value" id="pingMetricValue">— ms</span>
+              </div>
+              <div class="metric-pill">
+                <span class="metric-label">РЕЖИМ:</span>
+                <span class="metric-value mode-accent" id="activeModeText">УМНЫЙ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Speed & Telemetry Card -->
+          <div class="telemetry-card">
+            <div class="telemetry-header">
+              <span>СКОРОСТЬ ТРАФИКА</span>
+              <span class="live-dot">● LIVE</span>
+            </div>
+            <div class="speed-meters">
+              <div class="speed-box download">
+                <div class="speed-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <polyline points="19 12 12 19 5 12"></polyline>
+                  </svg>
+                  <span>СКАЧИВАНИЕ</span>
+                </div>
+                <div class="speed-number" id="downSpeed">0.0 <span>KB/s</span></div>
+              </div>
+              <div class="speed-box upload">
+                <div class="speed-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                    <polyline points="5 12 12 5 19 12"></polyline>
+                  </svg>
+                  <span>ОТДАЧА</span>
+                </div>
+                <div class="speed-number" id="upSpeed">0.0 <span>KB/s</span></div>
+              </div>
+            </div>
+            <!-- Canvas Graph -->
+            <canvas id="speedGraph" class="speed-canvas" width="280" height="60"></canvas>
+          </div>
+        </div>
+
+        <!-- Active Server Banner -->
+        <div class="active-node-banner" id="activeNodeBanner">
+          <div class="node-flag" id="nodeFlag">🌐</div>
+          <div class="node-info">
+            <div class="node-name" id="nodeName">Нет активного сервера</div>
+            <div class="node-meta">
+              <span class="badge protocol-badge" id="nodeProtocol">VPN</span>
+              <span class="node-endpoint" id="nodeEndpoint">Вставьте ссылку выше</span>
+            </div>
+          </div>
+          <button id="clearActiveBtn" class="btn-icon danger" title="Сбросить активный сервер" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 2: СЕРВЕРЫ (SERVERS) ==================== -->
+      <section id="tab-servers" class="tab-pane">
+        <div class="pane-top">
+          <div>
+            <h2>Серверы и подписки</h2>
+            <p>Управление вашими локациями, ключами и конфигурациями</p>
+          </div>
+          <div class="pane-btn-group">
+            <button id="pingAllBtn" class="btn btn-secondary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6l4 2"></path>
+              </svg>
+              <span>Тест пинга всех</span>
+            </button>
+            <button id="clearAllServersBtn" class="btn btn-danger-outline">Очистить список</button>
+          </div>
+        </div>
+
+        <div class="servers-grid" id="serversGrid"></div>
+      </section>
+
+      <!-- ==================== TAB 3: МАРШРУТИЗАЦИЯ (ROUTING) ==================== -->
+      <section id="tab-routing" class="tab-pane">
+        <div class="pane-top">
+          <div>
+            <h2>Умная маршрутизация</h2>
+            <p>Настройка правил обхода и системного проксирования Windows</p>
+          </div>
+        </div>
+
+        <!-- Windows System Proxy Card -->
+        <div class="setting-card">
+          <div class="setting-text">
+            <h4>Системный прокси Windows</h4>
+            <p>Включает прокси в настройках Windows для браузеров и базовых программ.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="sysProxySwitch" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- TUN Mode Card -->
+        <div class="setting-card">
+          <div class="setting-text">
+            <h4>Режим TUN (Виртуальный адаптер WinTun)</h4>
+            <p>Глубокий перехват трафика на уровне сетевой карты. Решает проблемы с голосом в Discord, онлайн-играми (Dota 2, CS2) и раскрывает весь потенциал скорости Hysteria 2.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tunModeSwitch">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Mode Select Cards -->
+        <div class="mode-cards-grid">
+          <div class="mode-card active" data-mode="smart">
+            <div class="mode-card-header">
+              <span class="mode-icon">🚀</span>
+              <span class="mode-badge">РЕКОМЕНДУЕТСЯ</span>
+            </div>
+            <h4>Умный режим (Smart Antizapret)</h4>
+            <p>Через VPN идут только заблокированные сайты (YouTube, Discord, Instagram, Twitter...). Банки и Госуслуги работают напрямую без потери скорости.</p>
+          </div>
+
+          <div class="mode-card" data-mode="global">
+            <div class="mode-card-header">
+              <span class="mode-icon">🌐</span>
+            </div>
+            <h4>Все сайты (Global VPN)</h4>
+            <p>100% браузерного и сетевого трафика направляется через выбранный VPN-сервер. Полная маскировка IP.</p>
+          </div>
+        </div>
+
+        <!-- Domain List Editor -->
+        <div class="domains-manager">
+          <div class="domains-header">
+            <h4>Список сайтов для умного режима (<span id="domainsCount">0</span>)</h4>
+            <button id="resetDomainsBtn" class="btn btn-secondary btn-sm">Сбросить по умолчанию</button>
+          </div>
+
+          <div class="domain-add-bar">
+            <input type="text" id="newDomainInput" placeholder="Добавить сайт (например: discord.com или rutracker.org)">
+            <button id="addDomainBtn" class="btn btn-primary btn-sm">+ Добавить</button>
+          </div>
+
+          <div class="domains-tag-cloud" id="domainsTagsCloud"></div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 4: ЖУРНАЛ (LOGS) ==================== -->
+      <section id="tab-logs" class="tab-pane">
+        <div class="pane-top">
+          <div>
+            <h2>Журнал работы ядра</h2>
+            <p>Живой поток событий sing-box, рукопожатий и маршрутизации</p>
+          </div>
+          <button id="clearLogsBtn" class="btn btn-secondary btn-sm">Очистить журнал</button>
+        </div>
+
+        <div class="terminal-box" id="terminalBox">
+          <div class="terminal-line">[Система] Запуск Untitled Stealth v2.0...</div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 5: НАСТРОЙКИ (SETTINGS) ==================== -->
+      <section id="tab-settings" class="tab-pane">
+        <div class="pane-top">
+          <div>
+            <h2>Параметры приложения</h2>
+            <p>Системные настройки и автозагрузка</p>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-text">
+            <h4>Автозапуск с Windows</h4>
+            <p>Запускать приложение в системном трее при старте компьютера.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="autostartSwitch">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-text">
+            <h4>Порт локального Mixed-прокси</h4>
+            <p>Смешанный порт SOCKS5 и HTTP (для ручной настройки программ: 127.0.0.1:10808).</p>
+          </div>
+          <span class="badge info-badge">10808</span>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-text">
+            <h4>Ядро проксирования</h4>
+            <p>Официальное высокопроизводительное ядро sing-box v1.14.3 (с поддержкой QUIC и uTLS).</p>
+          </div>
+          <span class="badge success-badge">АКТИВНО</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

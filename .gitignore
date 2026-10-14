@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.log
+core/*.log
+core/sing-box.log
+core/config.json
+core/test_*.json
+core/wintun.zip
+servers_history.json
+startup_debug.log
+electron_debug.log
+.DS_Store
+Thumbs.db
