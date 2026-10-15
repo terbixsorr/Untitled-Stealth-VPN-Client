@@ -12,7 +12,7 @@ const http = require("http");
 const { URL } = require("url");
 
 // Предотвращение аппаратных сбоев GPU (черный экран на Windows)
-app.setName("untitled-stealth");
+app.setName("Untitled Stealth");
 app.disableHardwareAcceleration();
 
 try {
@@ -34,7 +34,6 @@ if (!gotTheLock) {
 }
 
 // Постоянное хранилище пользовательских настроек и конфигов
-app.setName("Untitled Stealth");
 const USER_DATA_DIR = app.getPath("userData");
 try {
   if (!fs.existsSync(USER_DATA_DIR)) {
@@ -48,8 +47,9 @@ try {
 function migrateOldStorageFiles() {
   const files = ["servers_history.json", "settings.json", "domains_list.json"];
   const candidateDirs = [
-    __dirname,
+    path.join(process.env.APPDATA || "", "untitled-stealth"),
     path.join(process.env.LOCALAPPDATA || "", "Programs", "UntitledStealth", "resources", "app"),
+    __dirname,
     "C:\\лаунчер"
   ];
 

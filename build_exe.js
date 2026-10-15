@@ -93,7 +93,8 @@ console.log(`Размер сжатого архива: ${(zipStats.size / 1024 /
 // 5. Компиляция C# лаунчера
 console.log("4. Компиляция C# лаунчера...");
 const cscPath = "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe";
-const cscCmd = `"${cscPath}" /target:winexe /out:"${STUB_EXE}" /win32icon:"${ICON_PATH}" /reference:System.Windows.Forms.dll,System.Drawing.dll,System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,Microsoft.CSharp.dll "${path.join(ROOT_DIR, "StandaloneLauncher.cs")}"`;
+const manifestPath = path.join(ROOT_DIR, "app.manifest");
+const cscCmd = `"${cscPath}" /target:winexe /out:"${STUB_EXE}" /win32icon:"${ICON_PATH}" /win32manifest:"${manifestPath}" /reference:System.Windows.Forms.dll,System.Drawing.dll,System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,Microsoft.CSharp.dll "${path.join(ROOT_DIR, "StandaloneLauncher.cs")}"`;
 execSync(cscCmd, { stdio: "inherit" });
 
 // 6. Объединение stub.exe + zip + zipLength (8 bytes long)

@@ -101,16 +101,29 @@ namespace UntitledStealthLauncher {
             return longPath;
         }
 
+        static void KillExistingProcesses() {
+            try {
+                foreach (var p in Process.GetProcessesByName("UntitledStealth")) {
+                    try { p.Kill(); p.WaitForExit(1000); } catch {}
+                }
+                foreach (var p in Process.GetProcessesByName("sing-box")) {
+                    try { p.Kill(); p.WaitForExit(1000); } catch {}
+                }
+            } catch {}
+        }
+
         [STAThread]
         static void Main(string[] args) {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            KillExistingProcesses();
+
             string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             string appDir = Path.Combine(localAppData, "Programs", "UntitledStealth");
             string targetExe = Path.Combine(appDir, "UntitledStealth.exe");
             string ffmpegDll = Path.Combine(appDir, "ffmpeg.dll");
-            string markerFile = Path.Combine(appDir, ".v100_fixed_installed");
+            string markerFile = Path.Combine(appDir, ".v101_installed");
 
             // Если уже распаковано и ffmpeg на месте — запускаем моментально
             if (File.Exists(targetExe) && File.Exists(markerFile) && File.Exists(ffmpegDll)) {
@@ -125,15 +138,7 @@ namespace UntitledStealthLauncher {
             Thread worker = new Thread(() => {
                 try {
                     splash.SetStatus("Распаковка компонентов Untitled Stealth...");
-
-                    try {
-                        foreach (var p in Process.GetProcessesByName("UntitledStealth")) {
-                            try { p.Kill(); p.WaitForExit(1000); } catch {}
-                        }
-                        foreach (var p in Process.GetProcessesByName("sing-box")) {
-                            try { p.Kill(); p.WaitForExit(1000); } catch {}
-                        }
-                    } catch {}
+                    KillExistingProcesses();
 
                     if (!Directory.Exists(appDir)) {
                         Directory.CreateDirectory(appDir);
