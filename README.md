@@ -1,114 +1,149 @@
-# ⚡ Untitled Stealth — Desktop VPN & Proxy Launcher
+# Untitled Stealth Desktop Client
 
 <p align="center">
-  <img src="icons/app.png" alt="Untitled Stealth Logo" width="128" height="128">
+  <img src="icons/app.png" alt="Untitled Stealth Logo" width="96" height="96">
 </p>
 
 <p align="center">
-  <b>Ультра-быстрый десктопный VPN-клиент на ядре sing-box v1.14 с поддержкой TUN (WinTun), Hysteria 2, VLESS Reality и умной маршрутизацией для Windows.</b>
+  <b>Десктопный клиент VPN и прокси-соединений для Windows на базе ядра sing-box с поддержкой виртуального сетевого адаптера WinTun, протоколов VLESS Reality, Hysteria 2 и селективной маршрутизации.</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.0.0-00f0ff?style=for-the-badge" alt="Version">
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-3b82f6?style=for-the-badge" alt="Platform">
-  <img src="https://img.shields.io/badge/Core-sing--box%20v1.14-10b981?style=for-the-badge" alt="Sing-box">
-  <img src="https://img.shields.io/badge/TUN-WinTun%20Driver-8b5cf6?style=for-the-badge" alt="WinTun">
-  <img src="https://img.shields.io/badge/License-MIT-f59e0b?style=for-the-badge" alt="License">
+  <a href="https://github.com/terbixsorr/Untitled-Stealth-VPN-Client/releases"><img src="https://img.shields.io/github/v/release/terbixsorr/Untitled-Stealth-VPN-Client?style=flat-square&color=0284c7" alt="Release"></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20x64-334155?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/Core-sing--box%20v1.14-059669?style=flat-square" alt="Sing-box">
+  <img src="https://img.shields.io/badge/L3%20Driver-WinTun%20v0.14-6366f1?style=flat-square" alt="WinTun">
+  <img src="https://img.shields.io/badge/License-MIT-475569?style=flat-square" alt="License">
 </p>
 
 ---
 
-## ✨ Ключевые возможности
+## Обзор
 
-- 🚀 **Поддержка современных протоколов:**
-  - **Hysteria 2** (максимальная скорость на базе QUIC/UDP, обход агрессивного троттлинга).
-  - **VLESS Reality** (маскировка под легитимный TLS-трафик, защита от DPI).
-  - **VMess, Shadowsocks, Trojan, SOCKS5, HTTP**.
-  - **Автоматическая загрузка подписок** по HTTP/HTTPS ссылкам.
-- 🛡 **Режим TUN (Виртуальный сетевой адаптер WinTun):**
-  - Захват сетевого трафика на уровне ядра Windows.
-  - Полноценная работа голосовых каналов в **Discord** и звонков в **Telegram**.
-  - Пропуск игрового трафика (**Dota 2**, **CS2**, **Steam**) с минимальным пингом.
-- 🧠 **Умная маршрутизация (Smart PAC Routing):**
-  - Автоматическое разделение трафика: через прокси идут только заблокированные ресурсы (YouTube, Discord, Telegram, Instagram, Twitter/X, Rutracker и др.).
-  - Банки, Госуслуги, маркетплейсы и локальные сайты работают **напрямую на скорости вашего провайдера**.
-  - Возможность добавлять и удалять собственные домены в один клик прямо в приложении.
-- 🌐 **Глобальный режим (Global):**
-  - Направление 100% трафика системы через выбранный защищенный узел.
-- 🪟 **Интеграция с Windows:**
-  - Нативное переключение системного прокси Windows в один клик.
-  - Сворачивание в системный трей с контекстным меню быстрого управления.
-  - Автозапуск при старте Windows (опционально).
-  - Автоматический запрос прав администратора (UAC) для создания адаптера WinTun.
-- 📊 **Телеметрия в реальном времени:**
-  - Живой замер пинга (Latency / RTT) до сервера.
-  - График и счетчики скорости скачивания и отдачи.
-- 🎨 **Obsidian Cyberpunk UI:**
-  - Стильный темный интерфейс с неоновой анимацией кольца питания и статуса защиты.
+**Untitled Stealth** — специализированный клиент сетевой маршрутизации и защищенных туннелей для операционных систем Windows 10 и 11. Приложение объединяет возможности высокопроизводительного ядра **sing-box**, драйвера сетевого уровня **WinTun** и модульного графического интерфейса на базе Electron, обеспечивая гибкую маршрутизацию трафика без необходимости ручной правки конфигурационных файлов.
 
 ---
 
-## 🚀 Установка и запуск
+## Архитектура и стек технологий
 
-### Вариант 1: Готовый автономный файл (Single EXE) — Рекомендуется
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Графический интерфейс                    │
+│            Electron 28 • HTML5/CSS3 • IPC Bridge            │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ IPC Channels
+┌──────────────────────────────▼──────────────────────────────┐
+│                    Управляющий процесс                      │
+│        Node.js Runtime • WinINet Controller • UAC Elev.     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Subprocess Control / PAC
+┌──────────────────────────────▼──────────────────────────────┐
+│                    Сетевое ядро sing-box                    │
+│      L3 Virtual TUN Adapter (WinTun) • Outbound Engines     │
+└──────────────┬───────────────────────────────┬──────────────┘
+               │                               │
+       ┌───────▼───────┐               ┌───────▼───────┐
+       │   Hysteria 2  │               │ VLESS Reality │
+       │   QUIC / UDP  │               │  TLS 1.3 SNI  │
+       └───────────────┘               └───────────────┘
+```
 
-1. Скачайте **[`UntitledStealth-v1.0.0.exe`](https://github.com/terbixsorr/Untitled-Stealth-VPN-Client/releases)** из раздела [Releases](https://github.com/terbixsorr/Untitled-Stealth-VPN-Client/releases).
-2. Запустите файл (при первом запуске Windows запросит права администратора для WinTun).
-3. Приложение автоматически распакует необходимые компоненты в `%LOCALAPPDATA%\Programs\UntitledStealth\` и создаст ярлык на рабочем столе.
-4. Вставьте ссылку на ваш узел (Hysteria 2, VLESS и др.) и нажмите **«Подключить»**!
+* **Frontend**: Electron, Context Isolation, Typed Preload IPC API.
+* **Core Engine**: `sing-box` (Go-бинарник, скомпилированный под `windows/amd64`).
+* **Kernel Network Driver**: `wintun.dll` (разработка WireGuard Project).
+* **System Proxy Subsystem**: Нативная интеграция с Windows Internet API (`WinINet`) и генератор PAC-скриптов.
 
 ---
 
-### Вариант 2: Запуск из исходного кода
+## Поддерживаемые протоколы и транспорты
 
-Требуется установленный [Node.js](https://nodejs.org/) (v18+):
+| Протокол | Транспорт / Безопасность | Назначение и особенности |
+| :--- | :--- | :--- |
+| **Hysteria 2** | QUIC / UDP, TLS 1.3 | Высокая пропускная способность при высоких сетевых потерях и агрессивном троттлинге UDP/TCP провайдерами |
+| **VLESS Reality** | TCP, XTLS Reality | Прямая маскировка сетевых рукопожатий под доверенные сторонние TLS-сертификаты без владения собственным доменом |
+| **VMess** | TCP, WebSocket + TLS | Стандартная совместимость с инфраструктурой v2ray/Xray |
+| **Trojan** | TCP, WebSocket + TLS | Эмуляция стандартного HTTPS-трафика |
+| **Shadowsocks** | AEAD, 2022 Specification | Легковесное симметричное шифрование с минимальными накладными расходами |
+| **SOCKS5 / HTTP** | TCP Cleartext / TLS | Локальные и удаленные шлюзы маршрутизации |
+| **Subscriptions** | HTTP / HTTPS (Base64) | Автоматический импорт списков узлов из внешних источников |
+
+---
+
+## Сетевые режимы работы
+
+### 1. Системный TUN-режим (L3 Virtual Adapter)
+* Создает виртуальный сетевой интерфейс `wintun` на уровне ядра Windows.
+* Осуществляет полный перехват как TCP-, так и UDP-пакетов операционной системы.
+* Обеспечивает стабильную маршрутизацию трафика программ, не поддерживающих стандартный системный прокси: голосовые каналы Discord (WebRTC), звонки Telegram, игровые клиенты (Steam, Dota 2, CS2) и консольные утилиты.
+* Требует запуска с правами локального Администратора (UAC-манифест встроен в загрузчик).
+
+### 2. Селективный режим (Smart PAC Routing)
+* Автоматическое разделение сетевых потоков через Proxy Auto-Configuration (PAC).
+* Через защищенный туннель направляются только домены из заданного списка (YouTube, Discord, Telegram, X, GitHub, Rutracker и др.).
+* Трафик банковских сервисов, государственных порталов и внутрироссийских ресурсов обрабатывается напрямую на скорости провайдера без дополнительных задержек.
+* Возможность добавления и удаления пользовательских доменов в реальном времени.
+
+### 3. Глобальный режим (Global System Proxy)
+* Централизованное перенаправление всего системного HTTP/HTTPS трафика через выбранный прокси-сервер (`127.0.0.1:10808`).
+
+---
+
+## Постоянное хранилище и конфигурации
+
+Все пользовательские данные изолированы от исполняемых файлов программы и сохраняются в системном каталоге профиля:
+
+```
+%APPDATA%\Untitled Stealth\
+├── servers_history.json    # Профили и параметры подключений
+├── settings.json           # Состояние TUN, активный сервер, автоподключение
+└── domains_list.json       # Пользовательские доменные правила маршрутизации
+```
+
+Данные сохраняются при перезапуске системы, перезагрузке приложения и обновлении версий бинарного файла.
+
+---
+
+## Установка и развертывание
+
+### Вариант 1. Автономный исполняемый файл (Standalone Portable EXE)
+1. Загрузите файл **[`UntitledStealth-v1.0.0.exe`](https://github.com/terbixsorr/Untitled-Stealth-VPN-Client/releases)** со страницы [Releases](https://github.com/terbixsorr/Untitled-Stealth-VPN-Client/releases).
+2. Запустите файл от имени Администратора.
+3. Приложение автоматически инициализирует системный драйвер WinTun, создаст рабочий ярлык и развернет рабочую среду в `%LOCALAPPDATA%\Programs\UntitledStealth\`.
+
+### Вариант 2. Сборка из исходного кода
+
+**Требования:**
+* Node.js v18.0.0 или выше;
+* .NET Framework 4.5+ (для компиляции лаунчера `csc.exe`);
+* Git.
 
 ```bash
-# Клонируйте репозиторий
+# Клонирование репозитория
 git clone https://github.com/terbixsorr/Untitled-Stealth-VPN-Client.git
 cd Untitled-Stealth-VPN-Client
 
-# Установите зависимости
+# Установка зависимостей
 npm install
 
-# Запуск приложения
+# Запуск в режиме разработки
 npm start
+
+# Компиляция автономного EXE-пакета
+node build_exe.js
 ```
 
 ---
 
-## 📂 Структура проекта
+## Безопасность
 
-```
-├── core/                      # Ядро и сетевые драйверы
-│   ├── sing-box.exe           # Высокопроизводительное ядро sing-box v1.14
-│   ├── wintun.dll             # Высокоскоростной драйвер виртуального адаптера WinTun
-│   └── proxy.pac              # Скрипт автоматической маршрутизации Windows
-├── desktop/                   # Пользовательский интерфейс (UI)
-│   ├── index.html             # Главная разметка лаунчера (Obsidian theme)
-│   ├── renderer.js            # Логика UI, телеметрия, графики, валидация
-│   └── style.css              # Неоновые темные стили и анимации
-├── icons/                     # Иконки приложения (ICO, PNG)
-├── main.js                    # Electron Main Process (управление sing-box, IPC, TUN)
-├── preload.js                 # Безопасный IPC мост между Electron и веб-страницей
-├── domains_list.json          # Список доменов для умного режима
-├── settings.json              # Сохраненные настройки клиента
-├── StandaloneLauncher.cs      # C# загрузчик для сборки в единый автономный EXE
-└── build_exe.js               # Скрипт сборки Single EXE файла
-```
+* Приложение не использует внешние телеметрические сервисы, системы аналитики и сторонние сборщики логов.
+* Учетные данные, пароли и приватные ключи хранятся локально в закрытом пользовательском каталоге Windows.
+* Сетевое ядро `sing-box` проходит регулярный аудит безопасности сообществом открытого ПО.
 
 ---
 
-## 🔒 Безопасность и конфиденциальность
+## Лицензирование
 
-- Все конфигурации, ключи серверов и учетные данные хранятся **исключительно локально** на вашем компьютере.
-- Приложение не ведет внешних телеметрических логов и не передает ваши данные сторонним серверам.
-- Полностью открытый исходный код под лицензией MIT.
-
----
-
-## 📄 Лицензия
-
-Проект распространяется под лицензией [MIT](LICENSE).
-Ядро [sing-box](https://github.com/SagerNet/sing-box) распространяется под лицензией GPLv3 / Open Source.
-Драйвер [WinTun](https://www.wintun.net/) лицензирован под MIT/BSD.
+* Исходный код клиента лицензирован под [MIT License](LICENSE).
+* Сетевое ядро [sing-box](https://github.com/SagerNet/sing-box) распространяется под лицензией GPLv3.
+* Сетевой драйвер [WinTun](https://www.wintun.net/) распространяется под лицензией BSD/MIT.
