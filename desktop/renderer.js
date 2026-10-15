@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Dashboard elements
   const dashLinkInput = document.getElementById("dashLinkInput");
+  const dashAddBtn = document.getElementById("dashAddBtn");
   const dashConnectBtn = document.getElementById("dashConnectBtn");
 
   const powerRing = document.getElementById("powerRing");
@@ -43,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Servers elements
   const serversGrid = document.getElementById("serversGrid");
+  const addServerFromServersTabBtn = document.getElementById("addServerFromServersTabBtn");
   const pingAllBtn = document.getElementById("pingAllBtn");
   const clearAllServersBtn = document.getElementById("clearAllServersBtn");
 
@@ -60,6 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const terminalBox = document.getElementById("terminalBox");
   const clearLogsBtn = document.getElementById("clearLogsBtn");
   const autostartSwitch = document.getElementById("autostartSwitch");
+  const autoConnectSwitch = document.getElementById("autoConnectSwitch");
 
   let appState = await window.api.getStatus();
   let timerInterval = null;
@@ -119,11 +122,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadServers();
   });
 
-  // Быстрое подключение по ссылке в шапке
+  // Быстрое подключение и сохранение по ссылке в шапке
   dashConnectBtn.addEventListener("click", () => handleConnectInput());
+  if (dashAddBtn) {
+    dashAddBtn.addEventListener("click", () => handleAddServerInput());
+  }
   dashLinkInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleConnectInput();
   });
+
+  async function handleAddServerInput() {
+    const url = dashLinkInput.value.trim();
+    if (!url) {
+      alert("Пожалуйста, сначала вставьте ссылку или конфигурацию в поле ввода!");
+      return;
+    }
+
+    dashAddBtn.disabled = true;
+    const origSpan = dashAddBtn.querySelector("span");
+    if (origSpan) origSpan.textContent = "Сохранение...";
+
+    const res = await window.api.addServer(url);
+    dashAddBtn.disabled = false;
+    if (origSpan) origSpan.textContent = "Сохранить";
+
+    if (res.success) {
+      dashLinkInput.value = "";
+      appState = await window.api.getStatus();
+      renderAppState(appState);
+      loadServers();
+      alert(`Конфигурация успешно сохранена! Всего в списке: ${res.count || (res.servers ? res.servers.length : 1)}`);
+    } else {
+      alert("Ошибка сохранения: " + (res.error || "Неподдерживаемый формат ссылки"));
+    }
+  }
 
   async function handleConnectInput() {
     const url = dashLinkInput.value.trim();
@@ -136,12 +168,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     dashConnectBtn.disabled = false;
     dashConnectBtn.innerHTML = `<span>Подключить</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
 
+    appState = await window.api.getStatus();
+    renderAppState(appState);
+    loadServers();
+
     if (res.success) {
       dashLinkInput.value = "";
-      appState = await window.api.getStatus();
-      renderAppState(appState);
       runPing();
-      loadServers();
     } else {
       alert("Ошибка подключения: " + (res.error || "Не удалось запустить конфигурацию"));
     }
@@ -298,6 +331,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
         <div class="server-card-right">
           <span class="ping-tag" id="ping_${srv.id}">— ms</span>
+          <button class="btn-icon select-srv-btn" title="Сделать активным узлом" style="${isCurrent ? 'color: #10b981; border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.1);' : ''}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
           <button class="btn-icon danger del-srv-btn" title="Удалить узел">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -315,6 +353,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         loadServers();
       });
 
+      const selectBtn = card.querySelector(".select-srv-btn");
+      if (selectBtn) {
+        selectBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await window.api.setActiveServer(srv.id);
+          appState = await window.api.getStatus();
+          renderAppState(appState);
+          loadServers();
+        });
+      }
+
       card.querySelector(".del-srv-btn").addEventListener("click", async (e) => {
         e.stopPropagation();
         await window.api.deleteServer(srv.id);
@@ -324,6 +373,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       serversGrid.appendChild(card);
+    });
+  }
+
+  // Кнопка добавления сервера из вкладки Серверы
+  if (addServerFromServersTabBtn) {
+    addServerFromServersTabBtn.addEventListener("click", async () => {
+      const url = prompt("Вставьте ссылку на VPN-узел (vless://, hysteria2://, ss://, trojan://) или ссылку на подписку:");
+      if (url && url.trim()) {
+        const res = await window.api.addServer(url.trim());
+        if (res.success) {
+          appState = await window.api.getStatus();
+          renderAppState(appState);
+          loadServers();
+          alert(`Успешно добавлено узлов: ${res.count || 1}`);
+        } else {
+          alert("Ошибка добавления: " + (res.error || "Неподдерживаемый формат"));
+        }
+      }
     });
   }
 
@@ -382,15 +449,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     terminalBox.innerHTML = '<div class="terminal-line">[Система] Журнал очищен</div>';
   });
 
-  // ==================== АВТОЗАПУСК ====================
+  // ==================== АВТОЗАПУСК И НАСТРОЙКИ ====================
   async function loadAutostart() {
     const isAuto = await window.api.getAutostart();
     autostartSwitch.checked = Boolean(isAuto);
+    if (autoConnectSwitch) {
+      autoConnectSwitch.checked = Boolean(appState.autoConnect);
+    }
   }
 
   autostartSwitch.addEventListener("change", async (e) => {
     await window.api.setAutostart(e.target.checked);
   });
+
+  if (autoConnectSwitch) {
+    autoConnectSwitch.addEventListener("change", async (e) => {
+      await window.api.setAutoConnect(e.target.checked);
+      appState.autoConnect = e.target.checked;
+    });
+  }
 
   // ==================== ОТРИСОВКА СОСТОЯНИЯ ====================
   function renderAppState(state) {

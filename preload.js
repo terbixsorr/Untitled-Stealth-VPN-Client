@@ -15,10 +15,14 @@ contextBridge.exposeInMainWorld("api", {
   setTunMode: (enabled) => ipcRenderer.invoke("proxy:set-tun", enabled),
   setAutostart: (enabled) => ipcRenderer.invoke("system:set-autostart", enabled),
   getAutostart: () => ipcRenderer.invoke("system:get-autostart"),
+  setAutoConnect: (enabled) => ipcRenderer.invoke("settings:set-autoconnect", enabled),
+  getSettings: () => ipcRenderer.invoke("settings:get"),
 
   // Хранилище серверов и доменов
   getSavedServers: () => ipcRenderer.invoke("storage:get-servers"),
   saveServer: (server) => ipcRenderer.invoke("storage:save-server", server),
+  addServer: (url) => ipcRenderer.invoke("storage:add-server", url),
+  setActiveServer: (id) => ipcRenderer.invoke("core:set-active", id),
   deleteServer: (id) => ipcRenderer.invoke("storage:delete-server", id),
   getDomains: () => ipcRenderer.invoke("storage:get-domains"),
   saveDomains: (domains) => ipcRenderer.invoke("storage:save-domains", domains),

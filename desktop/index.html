@@ -104,6 +104,13 @@
             </svg>
             <input type="text" id="dashLinkInput" placeholder="Вставьте vless://, hysteria2://, ss:// или ссылку подписки..." spellcheck="false">
           </div>
+          <button id="dashAddBtn" class="btn btn-secondary" title="Сохранить узел без подключения" style="white-space: nowrap;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Сохранить</span>
+          </button>
           <button id="dashConnectBtn" class="btn btn-primary" title="Подключить узел">
             <span>Подключить</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -205,6 +212,13 @@
             <p>Управление вашими локациями, ключами и конфигурациями</p>
           </div>
           <div class="pane-btn-group">
+            <button id="addServerFromServersTabBtn" class="btn btn-primary" title="Добавить сервер или подписку">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+ Добавить узел</span>
+            </button>
             <button id="pingAllBtn" class="btn btn-secondary">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -319,6 +333,17 @@
           </div>
           <label class="switch">
             <input type="checkbox" id="autostartSwitch">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-text">
+            <h4>Автоматическое подключение</h4>
+            <p>Автоматически подключаться к последней активной конфигурации при запуске приложения.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="autoConnectSwitch">
             <span class="slider"></span>
           </label>
         </div>

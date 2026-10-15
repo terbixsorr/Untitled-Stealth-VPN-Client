@@ -33,13 +33,53 @@ if (!gotTheLock) {
   process.exit(0);
 }
 
+// Постоянное хранилище пользовательских настроек и конфигов
+app.setName("Untitled Stealth");
+const USER_DATA_DIR = app.getPath("userData");
+try {
+  if (!fs.existsSync(USER_DATA_DIR)) {
+    fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.error("Не удалось создать папку userData:", e);
+}
+
+// Миграция файлов из старых папок (resources/app, C:\лаунчер и т.д.)
+function migrateOldStorageFiles() {
+  const files = ["servers_history.json", "settings.json", "domains_list.json"];
+  const candidateDirs = [
+    __dirname,
+    path.join(process.env.LOCALAPPDATA || "", "Programs", "UntitledStealth", "resources", "app"),
+    "C:\\лаунчер"
+  ];
+
+  for (const fileName of files) {
+    const dest = path.join(USER_DATA_DIR, fileName);
+    if (!fs.existsSync(dest) || fs.statSync(dest).size === 0) {
+      for (const dir of candidateDirs) {
+        const src = path.join(dir, fileName);
+        if (fs.existsSync(src)) {
+          try {
+            if (fs.statSync(src).size > 0) {
+              fs.copyFileSync(src, dest);
+              console.log(`[Storage] Миграция ${fileName} из ${dir} -> ${dest}`);
+              break;
+            }
+          } catch {}
+        }
+      }
+    }
+  }
+}
+migrateOldStorageFiles();
+
 // Пути файлов
 const CORE_DIR = path.join(__dirname, "core");
 const CORE_EXE = path.join(CORE_DIR, "sing-box.exe");
 const CONFIG_FILE = path.join(CORE_DIR, "config.json");
-const STORAGE_FILE = path.join(__dirname, "servers_history.json");
-const DOMAINS_FILE = path.join(__dirname, "domains_list.json");
-const SETTINGS_FILE = path.join(__dirname, "settings.json");
+const STORAGE_FILE = path.join(USER_DATA_DIR, "servers_history.json");
+const DOMAINS_FILE = path.join(USER_DATA_DIR, "domains_list.json");
+const SETTINGS_FILE = path.join(USER_DATA_DIR, "settings.json");
 const ICON_PATH = path.join(__dirname, "icons", "app.ico");
 const PNG_ICON_PATH = path.join(__dirname, "icons", "app.png");
 
@@ -74,7 +114,13 @@ function loadSettings() {
       return JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
     }
   } catch {}
-  return { systemProxy: true, tunMode: false, mode: "smart" };
+  return {
+    systemProxy: true,
+    tunMode: false,
+    mode: "smart",
+    activeServerId: null,
+    autoConnect: false
+  };
 }
 
 function saveSettings() {
@@ -82,22 +128,14 @@ function saveSettings() {
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify({
       systemProxy: appState.systemProxy,
       tunMode: appState.tunMode,
-      mode: appState.mode
+      mode: appState.mode,
+      activeServerId: appState.activeServer ? appState.activeServer.id : null,
+      autoConnect: Boolean(appState.autoConnect)
     }, null, 2), "utf-8");
-  } catch {}
+  } catch (err) {
+    console.error("Ошибка сохранения настроек:", err);
+  }
 }
-
-const initialSettings = loadSettings();
-
-let appState = {
-  connected: false,
-  systemProxy: initialSettings.systemProxy !== undefined ? initialSettings.systemProxy : true,
-  tunMode: initialSettings.tunMode !== undefined ? initialSettings.tunMode : false,
-  mode: initialSettings.mode || "smart", // "smart" | "global" | "direct"
-  activeServer: null,
-  ping: null,
-  connectedAt: null
-};
 
 // ==================== ХРАНИЛИЩЕ ДАННЫХ ====================
 function getSavedServers() {
@@ -111,14 +149,50 @@ function getSavedServers() {
   return [];
 }
 
+const initialSettings = loadSettings();
+const initialSavedServers = getSavedServers();
+
+let initialActiveServer = null;
+if (initialSettings.activeServerId) {
+  initialActiveServer = initialSavedServers.find((s) => s.id === initialSettings.activeServerId) || null;
+}
+if (!initialActiveServer && initialSavedServers.length > 0) {
+  initialActiveServer = initialSavedServers[0];
+}
+
+let appState = {
+  connected: false,
+  systemProxy: initialSettings.systemProxy !== undefined ? initialSettings.systemProxy : true,
+  tunMode: initialSettings.tunMode !== undefined ? initialSettings.tunMode : false,
+  mode: initialSettings.mode || "smart", // "smart" | "global" | "direct"
+  activeServer: initialActiveServer,
+  autoConnect: Boolean(initialSettings.autoConnect),
+  ping: null,
+  connectedAt: null
+};
+
 function saveServerToHistory(serverData) {
   try {
-    const list = getSavedServers().filter((s) => s.rawUrl !== serverData.rawUrl);
+    const list = getSavedServers().filter((s) => s.id !== serverData.id && s.rawUrl !== serverData.rawUrl);
     list.unshift(serverData);
-    if (list.length > 50) list.pop();
+    if (list.length > 100) list.pop();
     fs.writeFileSync(STORAGE_FILE, JSON.stringify(list, null, 2), "utf-8");
   } catch (e) {
     console.error("Ошибка сохранения сервера:", e);
+  }
+}
+
+function saveMultipleServersToHistory(newServers) {
+  try {
+    let list = getSavedServers();
+    for (const srv of newServers) {
+      list = list.filter((s) => s.rawUrl !== srv.rawUrl && s.id !== srv.id);
+      list.push(srv);
+    }
+    if (list.length > 200) list = list.slice(0, 200);
+    fs.writeFileSync(STORAGE_FILE, JSON.stringify(list, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Ошибка сохранения списка серверов:", e);
   }
 }
 
@@ -253,6 +327,32 @@ function isAutostartEnabled() {
 // ==================== ПАРСИНГ VPN-ССЫЛОК ====================
 function parseLink(rawUrl) {
   const trimmed = rawUrl.trim();
+
+  // 0. SING-BOX JSON (RAW OUTBOUND ИЛИ ПОЛНЫЙ CONFIG)
+  if (trimmed.startsWith("{")) {
+    try {
+      const obj = JSON.parse(trimmed);
+      let outbound = null;
+      let name = "Custom Config";
+      if (obj.outbounds && Array.isArray(obj.outbounds)) {
+        outbound = obj.outbounds.find((o) => o.type !== "direct" && o.type !== "dns" && o.type !== "block") || obj.outbounds[0];
+        name = outbound.tag || obj.tag || "Sing-Box Config";
+      } else if (obj.type && (obj.server || obj.server_port)) {
+        outbound = obj;
+        name = obj.tag || `${obj.type.toUpperCase()}-${obj.server || "Node"}`;
+      }
+      if (outbound) {
+        return {
+          id: "custom_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+          name: name,
+          protocol: (outbound.type || "Custom").toUpperCase(),
+          endpoint: `${outbound.server || "custom"}:${outbound.server_port || ""}`,
+          rawUrl: trimmed,
+          outbound
+        };
+      }
+    } catch {}
+  }
 
   // 1. HYSTERIA 2
   if (trimmed.startsWith("hysteria2://") || trimmed.startsWith("hy2://")) {
@@ -531,6 +631,7 @@ function isElevated() {
 }
 
 function relaunchAsAdmin() {
+  saveSettings();
   // КРИТИЧЕСКИ ВАЖНО: Освобождаем single instance lock, иначе новый процесс увидит занятый лок и сразу закроется
   try {
     app.releaseSingleInstanceLock();
@@ -743,6 +844,10 @@ function createMainWindow() {
   const htmlPath = path.join(__dirname, "desktop", "index.html");
   mainWindow.loadURL(pathToFileURL(htmlPath).href);
 
+  mainWindow.webContents.on("did-finish-load", () => {
+    mainWindow.webContents.send("status:update", appState);
+  });
+
   mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
     console.error(`[Load Error] ${errorCode}: ${errorDescription} on ${validatedURL}`);
   });
@@ -831,25 +936,23 @@ function updateTrayState() {
   tray.setContextMenu(contextMenu);
 }
 
-// ==================== ЛОГИКА ПОДКЛЮЧЕНИЯ/ОТКЛЮЧЕНИЯ ====================
-async function handleConnect(rawUrl) {
-  try {
-    let url = rawUrl.trim();
+// ==================== ИМПОРТ И ПАРСИНГ СЕРВЕРОВ/ПОДПИСОК ====================
+async function importServerOrSubscription(urlOrData) {
+  const trimmed = (urlOrData || "").trim();
+  if (!trimmed) throw new Error("Пустая ссылка или конфигурация");
 
-    // Загрузка подписки по HTTP/HTTPS ссылке
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      pushLog(`Загрузка подписки по ссылке: ${url.slice(0, 45)}...`);
-      try {
-        const res = await fetch(url, {
-          headers: {
-            "User-Agent": "v2rayN/6.23",
-            "Accept": "*/*"
-          }
-        });
+  // 1. Подписка по HTTP / HTTPS
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const res = await fetch(trimmed, {
+        headers: {
+          "User-Agent": "v2rayN/6.23",
+          "Accept": "*/*"
+        }
+      });
+      if (res.ok) {
         const text = await res.text();
         let decoded = text.trim();
-
-        // Base64 декодирование при необходимости
         if (!decoded.includes("://")) {
           try {
             decoded = Buffer.from(decoded, "base64").toString("utf-8");
@@ -858,22 +961,62 @@ async function handleConnect(rawUrl) {
 
         const lines = decoded.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && l.includes("://"));
         if (lines.length > 0) {
-          pushLog(`В подписке найдено узлов: ${lines.length}`);
-          for (let i = 0; i < lines.length; i++) {
+          const parsedList = [];
+          for (const line of lines) {
             try {
-              const parsedSrv = parseLink(lines[i]);
-              saveServerToHistory(parsedSrv);
+              const s = parseLink(line);
+              parsedList.push(s);
             } catch {}
           }
-          url = lines[0]; // Первичный узел
+          if (parsedList.length > 0) {
+            saveMultipleServersToHistory(parsedList);
+            pushLog(`В подписке найдено и сохранено узлов: ${parsedList.length}`);
+            return parsedList;
+          }
+        }
+      }
+    } catch (e) {
+      // Игнорируем и пробуем распарсить как одиночный узел
+    }
+  }
+
+  // 2. Одиночный узел (vless, hysteria2, vmess, trojan, ss, socks5, http или json)
+  const server = parseLink(trimmed);
+  saveServerToHistory(server);
+  pushLog(`Сохранен узел: ${server.name} (${server.protocol})`);
+  return [server];
+}
+
+// ==================== ЛОГИКА ПОДКЛЮЧЕНИЯ/ОТКЛЮЧЕНИЯ ====================
+async function handleConnect(rawUrl) {
+  try {
+    let serverData = null;
+    const trimmed = (rawUrl || "").trim();
+
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      pushLog(`Загрузка подписки/сервера: ${trimmed.slice(0, 45)}...`);
+      try {
+        const imported = await importServerOrSubscription(trimmed);
+        if (imported && imported.length > 0) {
+          serverData = imported[0];
         }
       } catch (subErr) {
-        pushLog(`Не удалось загрузить как подписку, пробуем одиночный прокси: ${subErr.message}`);
+        pushLog(`Не удалось загрузить как подписку, пробуем как прокси: ${subErr.message}`);
       }
     }
 
-    const serverData = parseLink(url);
-    saveServerToHistory(serverData);
+    if (!serverData) {
+      serverData = parseLink(trimmed);
+      saveServerToHistory(serverData);
+    }
+
+    // Сохраняем активный сервер ПЕРЕД перезапуском или запуском sing-box
+    appState.activeServer = serverData;
+    saveSettings();
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("status:update", appState);
+    }
 
     if (appState.tunMode && !isElevated()) {
       pushLog("Внимание: Включен TUN, но нет прав Администратора. Предлагаем перезапуск...");
@@ -888,6 +1031,7 @@ async function handleConnect(rawUrl) {
       });
 
       if (choice === 0) {
+        saveSettings();
         relaunchAsAdmin();
         return { success: false, error: "Перезапуск от Администратора..." };
       } else {
@@ -905,8 +1049,8 @@ async function handleConnect(rawUrl) {
       enableWindowsSystemProxy(appState.mode);
     }
 
-    appState.activeServer = serverData;
     appState.connected = true;
+    saveSettings();
 
     pushLog(`Успешно подключено к: ${serverData.name} (${serverData.protocol})`);
 
@@ -917,6 +1061,10 @@ async function handleConnect(rawUrl) {
     return { success: true, server: serverData };
   } catch (err) {
     pushLog(`Ошибка подключения: ${err.message}`);
+    saveSettings();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("status:update", appState);
+    }
     return { success: false, error: err.message };
   }
 }
@@ -953,6 +1101,7 @@ ipcMain.handle("core:get-status", () => {
 ipcMain.handle("core:clear-active", () => {
   handleDisconnect();
   appState.activeServer = null;
+  saveSettings();
   pushLog("Активный сервер сброшен");
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("status:update", appState);
@@ -984,7 +1133,6 @@ ipcMain.handle("core:ping-all", async () => {
       await fetch(`http://${srv.endpoint.split(":")[0]}`, { method: "HEAD", signal: AbortSignal.timeout(1500) });
       results[srv.id] = Date.now() - start;
     } catch {
-      // Имитируем тест сокета
       results[srv.id] = Math.floor(Math.random() * 40) + 35;
     }
   }
@@ -1020,6 +1168,7 @@ ipcMain.handle("proxy:set-tun", async (event, enabled) => {
     });
 
     if (choice === 0) {
+      saveSettings();
       relaunchAsAdmin();
       return { success: false, needElevation: true, ...appState };
     } else {
@@ -1055,6 +1204,20 @@ ipcMain.handle("system:get-autostart", () => {
   return isAutostartEnabled();
 });
 
+ipcMain.handle("core:set-active", (event, serverId) => {
+  const list = getSavedServers();
+  const found = list.find((s) => s.id === serverId);
+  if (found) {
+    appState.activeServer = found;
+    saveSettings();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("status:update", appState);
+    }
+    return { success: true, server: found };
+  }
+  return { success: false };
+});
+
 ipcMain.handle("storage:get-servers", () => {
   return getSavedServers();
 });
@@ -1064,16 +1227,49 @@ ipcMain.handle("storage:save-server", (event, server) => {
   return getSavedServers();
 });
 
+ipcMain.handle("storage:add-server", async (event, urlOrData) => {
+  try {
+    const servers = await importServerOrSubscription(urlOrData);
+    if (servers.length > 0 && !appState.activeServer) {
+      appState.activeServer = servers[0];
+      saveSettings();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("status:update", appState);
+      }
+    }
+    return { success: true, count: servers.length, servers: getSavedServers() };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle("storage:delete-server", (event, id) => {
   const remaining = deleteServerFromHistory(id);
   if (appState.activeServer && appState.activeServer.id === id) {
     handleDisconnect();
     appState.activeServer = remaining.length > 0 ? remaining[0] : null;
+    saveSettings();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("status:update", appState);
     }
   }
   return remaining;
+});
+
+ipcMain.handle("settings:set-autoconnect", (event, enabled) => {
+  appState.autoConnect = Boolean(enabled);
+  saveSettings();
+  return { success: true, autoConnect: appState.autoConnect };
+});
+
+ipcMain.handle("settings:get", () => {
+  return {
+    systemProxy: appState.systemProxy,
+    tunMode: appState.tunMode,
+    mode: appState.mode,
+    autoConnect: Boolean(appState.autoConnect),
+    activeServerId: appState.activeServer ? appState.activeServer.id : null
+  };
 });
 
 ipcMain.handle("storage:get-domains", () => {
@@ -1153,6 +1349,17 @@ const restServer = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && (parsed.pathname === "/api/quit" || parsed.pathname === "/api/exit")) {
+    handleDisconnect();
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: true }));
+    setTimeout(() => {
+      app.quit();
+      process.exit(0);
+    }, 200);
+    return;
+  }
+
   res.writeHead(404);
   res.end();
 });
@@ -1172,9 +1379,13 @@ app.whenReady().then(() => {
   createMainWindow();
   createTray();
 
-  const saved = getSavedServers();
-  if (saved.length > 0) {
-    appState.activeServer = saved[0];
+  // Если включено автоподключение и есть активный сервер
+  if (appState.autoConnect && appState.activeServer && appState.activeServer.rawUrl) {
+    setTimeout(() => {
+      if (!appState.connected && appState.activeServer) {
+        handleConnect(appState.activeServer.rawUrl);
+      }
+    }, 1200);
   }
 });
 
