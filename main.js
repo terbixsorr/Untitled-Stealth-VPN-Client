@@ -676,7 +676,7 @@ function startSingBox(outbound) {
       interface_name: "UntitledTUN",
       address: ["172.19.0.1/30"],
       auto_route: true,
-      strict_route: true,
+      strict_route: false, // Предотвращает разрыв системного NCSI и локальной сети
       stack: "mixed"
     });
   }
@@ -686,7 +686,22 @@ function startSingBox(outbound) {
 
   if (appState.tunMode) {
     rules.push({ protocol: "dns", action: "hijack-dns" });
+    rules.push({ action: "sniff" });
   }
+
+  // Windows NCSI (проверка доступа к интернету) всегда обрабатывается напрямую
+  const systemDirectDomains = [
+    "msftconnecttest.com",
+    "msftncsi.com",
+    "connectivitycheck.gstatic.com",
+    "dns.msftncsi.com",
+    "cp.cloudflare.com"
+  ];
+
+  rules.push({
+    domain_suffix: systemDirectDomains,
+    outbound: "direct"
+  });
 
   if (appState.mode === "smart") {
     // В умном режиме направляем Telegram IP, Discord Voice IP и список доменов в прокси
@@ -717,6 +732,27 @@ function startSingBox(outbound) {
 
   const singBoxLogFile = path.join(CORE_DIR, "sing-box.log").replace(/\\/g, "/");
 
+  const dnsRules = [
+    {
+      domain_suffix: systemDirectDomains,
+      server: "local-dns"
+    }
+  ];
+
+  if (appState.mode === "smart") {
+    dnsRules.push({
+      domain_suffix: domains,
+      server: "remote-dns"
+    });
+    dnsRules.push({
+      server: "local-dns"
+    });
+  } else {
+    dnsRules.push({
+      server: "remote-dns"
+    });
+  }
+
   const configObj = {
     log: {
       level: "info",
@@ -726,8 +762,11 @@ function startSingBox(outbound) {
     dns: {
       servers: [
         { tag: "remote-dns", type: "udp", server: "1.1.1.1", detour: "proxy" },
-        { tag: "local-dns", type: "udp", server: "77.88.8.8" }
-      ]
+        { tag: "local-dns", type: "udp", server: "77.88.8.8", detour: "direct" }
+      ],
+      rules: dnsRules,
+      final: appState.mode === "smart" ? "local-dns" : "remote-dns",
+      strategy: "prefer_ipv4"
     },
     inbounds: inbounds,
     outbounds: [
@@ -757,6 +796,9 @@ function startSingBox(outbound) {
   singBoxProcess.stderr.on("data", (data) => {
     const msg = data.toString().trim();
     pushLog(msg);
+    if (msg.includes("authentication failed") || msg.includes("status code: 404") || msg.includes("status code: 401")) {
+      pushLog("⚠️ Ошибка сервера: Отклонена авторизация (код 404). Ключ узла истек или недействителен.");
+    }
     if (msg.includes("Access is denied") || msg.includes("failed to create adapter") || msg.includes("failed to open adapter")) {
       pushLog("Внимание: Для создания адаптера WinTun требуются права Администратора.");
       pushLog("Переключаем на стандартный режим защиты (системный прокси)...");
