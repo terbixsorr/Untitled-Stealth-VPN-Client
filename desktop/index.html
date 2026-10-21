@@ -202,6 +202,37 @@
             </svg>
           </button>
         </div>
+
+        <!-- Quick Server Switcher on Dashboard -->
+        <div class="dash-servers-section">
+          <div class="dash-servers-header">
+            <div class="dash-servers-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              <span>Быстрый выбор узла</span>
+              <span class="badge" id="dashServersCount">0</span>
+            </div>
+            <div class="dash-servers-actions">
+              <button id="dashUpdateSubsBtn" class="btn btn-secondary btn-sm" title="Обновить информацию всех подписок">
+                <svg class="spin-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                <span>Обновить подписки</span>
+              </button>
+              <button id="dashGoServersTabBtn" class="btn-link" title="Перейти к списку всех серверов">
+                Все серверы →
+              </button>
+            </div>
+          </div>
+          <div class="dash-servers-grid" id="dashServersGrid">
+            <!-- Dynamic quick switch cards -->
+          </div>
+        </div>
       </section>
 
       <!-- ==================== TAB 2: СЕРВЕРЫ (SERVERS) ==================== -->
@@ -219,6 +250,14 @@
               </svg>
               <span>+ Добавить узел</span>
             </button>
+            <button id="refreshAllSubsTopBtn" class="btn btn-secondary" title="Обновить данные подписок">
+              <svg class="spin-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Обновить подписки</span>
+            </button>
             <button id="pingAllBtn" class="btn btn-secondary">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -227,6 +266,23 @@
               <span>Тест пинга всех</span>
             </button>
             <button id="clearAllServersBtn" class="btn btn-danger-outline">Очистить список</button>
+          </div>
+        </div>
+
+        <!-- Subscriptions Section -->
+        <div class="subs-section" id="subsSection" style="display: none;">
+          <div class="subs-header">
+            <div class="subs-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <span>Активные подписки</span>
+              <span class="badge" id="subsCountBadge">0</span>
+            </div>
+          </div>
+          <div class="subs-list" id="subsList">
+            <!-- Dynamic subscription cards -->
           </div>
         </div>
 

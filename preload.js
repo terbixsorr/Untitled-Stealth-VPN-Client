@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld("api", {
   getDomains: () => ipcRenderer.invoke("storage:get-domains"),
   saveDomains: (domains) => ipcRenderer.invoke("storage:save-domains", domains),
 
+  // Управление подписками
+  getSubscriptions: () => ipcRenderer.invoke("subscriptions:get"),
+  updateAllSubscriptions: () => ipcRenderer.invoke("subscriptions:update-all"),
+  updateSubscription: (id) => ipcRenderer.invoke("subscriptions:update", id),
+  deleteSubscription: (id) => ipcRenderer.invoke("subscriptions:delete", id),
+
   // Управление окном
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   maximizeWindow: () => ipcRenderer.send("window:maximize"),

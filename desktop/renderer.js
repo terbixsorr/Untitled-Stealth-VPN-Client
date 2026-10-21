@@ -42,11 +42,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sidebarEndpoint = document.getElementById("sidebarEndpoint");
   const serversCountBadge = document.getElementById("serversCountBadge");
 
-  // Servers elements
+  // Dashboard quick servers elements
+  const dashServersCount = document.getElementById("dashServersCount");
+  const dashServersGrid = document.getElementById("dashServersGrid");
+  const dashUpdateSubsBtn = document.getElementById("dashUpdateSubsBtn");
+  const dashGoServersTabBtn = document.getElementById("dashGoServersTabBtn");
+
+  // Servers & Subscriptions elements
   const serversGrid = document.getElementById("serversGrid");
   const addServerFromServersTabBtn = document.getElementById("addServerFromServersTabBtn");
+  const refreshAllSubsTopBtn = document.getElementById("refreshAllSubsTopBtn");
   const pingAllBtn = document.getElementById("pingAllBtn");
   const clearAllServersBtn = document.getElementById("clearAllServersBtn");
+  const subsSection = document.getElementById("subsSection");
+  const subsCountBadge = document.getElementById("subsCountBadge");
+  const subsList = document.getElementById("subsList");
 
   // Routing elements
   const sysProxySwitch = document.getElementById("sysProxySwitch");
@@ -85,7 +95,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const targetPane = document.getElementById(`tab-${tabId}`);
       if (targetPane) targetPane.classList.add("active");
 
-      if (tabId === "servers") loadServers();
+      if (tabId === "servers") {
+        loadServers();
+        loadSubscriptions();
+      }
       if (tabId === "routing") loadDomains();
       if (tabId === "logs") loadLogs();
     });
@@ -95,6 +108,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSpeedGraph();
   renderAppState(appState);
   loadServers();
+  loadSubscriptions();
   loadDomains();
   loadAutostart();
   loadLogs();
@@ -151,6 +165,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       appState = await window.api.getStatus();
       renderAppState(appState);
       loadServers();
+      loadSubscriptions();
       alert(`Конфигурация успешно сохранена! Всего в списке: ${res.count || (res.servers ? res.servers.length : 1)}`);
     } else {
       alert("Ошибка сохранения: " + (res.error || "Неподдерживаемый формат ссылки"));
@@ -171,6 +186,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     appState = await window.api.getStatus();
     renderAppState(appState);
     loadServers();
+    loadSubscriptions();
 
     if (res.success) {
       dashLinkInput.value = "";
@@ -298,10 +314,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // ==================== СПИСОК СЕРВЕРОВ ====================
+  // ==================== СПИСОК СЕРВЕРОВ И ПОДПИСОК ====================
   async function loadServers() {
     const servers = await window.api.getSavedServers();
     serversCountBadge.textContent = servers.length;
+    renderDashboardServers(servers);
     serversGrid.innerHTML = "";
 
     if (servers.length === 0) {
@@ -316,7 +333,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     servers.forEach((srv) => {
       const card = document.createElement("div");
-      const isCurrent = appState.activeServer && appState.activeServer.rawUrl === srv.rawUrl;
+      const isCurrent = appState.activeServer && (appState.activeServer.id === srv.id || appState.activeServer.rawUrl === srv.rawUrl);
       card.className = "server-card-item" + (isCurrent ? " active" : "");
 
       const flag = getFlag(srv.name, srv.endpoint);
@@ -346,7 +363,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
 
       card.addEventListener("click", async () => {
-        await window.api.connect(srv.rawUrl);
+        if (isCurrent && !appState.connected) {
+          await window.api.connect(srv.rawUrl);
+        } else {
+          await window.api.setActiveServer(srv.id);
+        }
         appState = await window.api.getStatus();
         renderAppState(appState);
         runPing();
@@ -376,6 +397,247 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // ==================== БЫСТРЫЙ ВЫБОР УЗЛА НА ГЛАВНОЙ ====================
+  function renderDashboardServers(servers) {
+    if (!dashServersGrid) return;
+    if (dashServersCount) dashServersCount.textContent = servers.length;
+    dashServersGrid.innerHTML = "";
+
+    if (servers.length === 0) {
+      dashServersGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 22px; text-align: center; color: var(--text-dim); background: var(--bg-card); border: 1px dashed var(--border-light); border-radius: var(--radius-md);">
+          <div style="font-size: 24px; margin-bottom: 6px;">⚡</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-main);">Нет сохраненных узлов</div>
+          <div style="font-size: 11px; margin-top: 4px; color: var(--text-muted);">Вставьте ссылку подписки или узла в строку выше для быстрого подключения</div>
+        </div>
+      `;
+      return;
+    }
+
+    servers.forEach((srv) => {
+      const card = document.createElement("div");
+      const isCurrent = appState.activeServer && (appState.activeServer.id === srv.id || appState.activeServer.rawUrl === srv.rawUrl);
+      card.className = "dash-server-card" + (isCurrent ? " active" : "");
+      card.title = isCurrent ? "Текущий активный узел" : `Переключиться на ${srv.name}`;
+
+      const flag = getFlag(srv.name, srv.endpoint);
+
+      card.innerHTML = `
+        <div class="dash-server-left">
+          <span class="dash-server-flag">${flag}</span>
+          <div class="dash-server-info">
+            <span class="dash-server-name">${escapeHtml(srv.name)}</span>
+            <span class="dash-server-meta">${escapeHtml(srv.protocol)} • ${escapeHtml(srv.endpoint)}</span>
+          </div>
+        </div>
+        <div class="dash-server-right">
+          <span class="ping-tag" id="dash_ping_${srv.id}">— ms</span>
+          <div class="dash-server-check">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+        </div>
+      `;
+
+      card.addEventListener("click", async () => {
+        if (isCurrent && !appState.connected) {
+          // Если клик по уже выбранному узлу при отключенном VPN — подключаемся
+          await window.api.connect(srv.rawUrl);
+        } else {
+          // Мгновенное переключение активного узла (если VPN подключен — трафик переключается на лету)
+          await window.api.setActiveServer(srv.id);
+        }
+        appState = await window.api.getStatus();
+        renderAppState(appState);
+        loadServers();
+        if (appState.connected) {
+          runPing();
+        }
+      });
+
+      dashServersGrid.appendChild(card);
+    });
+  }
+
+  // ==================== УПРАВЛЕНИЕ ПОДПИСКАМИ ====================
+  async function loadSubscriptions() {
+    if (!subsSection || !subsList) return;
+    const subs = await window.api.getSubscriptions();
+
+    if (subsCountBadge) subsCountBadge.textContent = subs.length;
+
+    if (!subs || subs.length === 0) {
+      subsSection.style.display = "none";
+      subsList.innerHTML = "";
+      return;
+    }
+
+    subsSection.style.display = "flex";
+    subsList.innerHTML = "";
+
+    subs.forEach((sub) => {
+      const card = document.createElement("div");
+      card.className = "sub-card";
+
+      // Трафик
+      let trafficHtml = "";
+      if (sub.userinfo && sub.userinfo.total > 0) {
+        const usedGB = (sub.userinfo.used / (1024 ** 3)).toFixed(1);
+        const totalGB = (sub.userinfo.total / (1024 ** 3)).toFixed(1);
+        const pct = Math.min(100, Math.max(0, Math.round((sub.userinfo.used / sub.userinfo.total) * 100)));
+        trafficHtml = `
+          <div class="sub-traffic-box">
+            <div class="sub-traffic-labels">
+              <span>Трафик: ${usedGB} GB из ${totalGB} GB</span>
+              <span>${pct}%</span>
+            </div>
+            <div class="sub-traffic-bar">
+              <div class="sub-traffic-fill" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      } else if (sub.userinfo && sub.userinfo.used > 0) {
+        const usedGB = (sub.userinfo.used / (1024 ** 3)).toFixed(1);
+        trafficHtml = `
+          <div class="sub-traffic-box">
+            <div class="sub-traffic-labels">
+              <span>Трафик: использовано ${usedGB} GB (Безлимитно)</span>
+              <span>—</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // Срок действия
+      let expireText = "Бессрочно";
+      if (sub.userinfo && sub.userinfo.expire) {
+        const expDate = new Date(sub.userinfo.expire);
+        expireText = expDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+      }
+
+      const updatedDate = sub.lastUpdated
+        ? new Date(sub.lastUpdated).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+        : "Недавно";
+
+      card.innerHTML = `
+        <div class="sub-card-top">
+          <div class="sub-card-title-group">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-cyan); flex-shrink: 0;">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <div>
+              <div class="sub-card-name">${escapeHtml(sub.name || "Подписка")} <span class="badge" style="margin-left: 6px;">${sub.serverCount || 0} узлов</span></div>
+              <div class="sub-card-url" title="${escapeHtml(sub.url)}">${escapeHtml(sub.url)}</div>
+            </div>
+          </div>
+          <div class="sub-card-actions">
+            <button class="btn btn-secondary btn-sm update-single-sub-btn" title="Обновить узлы и данные этой подписки">
+              <svg class="spin-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Обновить</span>
+            </button>
+            <button class="btn-icon danger del-sub-btn" title="Удалить подписку и все её серверы">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        ${trafficHtml}
+        <div class="sub-footer-meta">
+          <span>Срок действия: <strong>${escapeHtml(expireText)}</strong></span>
+          <span>Обновлено: <strong>${escapeHtml(updatedDate)}</strong></span>
+        </div>
+      `;
+
+      const updBtn = card.querySelector(".update-single-sub-btn");
+      if (updBtn) {
+        updBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          updBtn.disabled = true;
+          const spin = updBtn.querySelector(".spin-icon");
+          if (spin) spin.classList.add("spinning");
+          try {
+            await window.api.updateSubscription(sub.id);
+            appState = await window.api.getStatus();
+            renderAppState(appState);
+            loadServers();
+            loadSubscriptions();
+          } catch (err) {
+            alert("Ошибка обновления подписки: " + err.message);
+          } finally {
+            updBtn.disabled = false;
+            if (spin) spin.classList.remove("spinning");
+          }
+        });
+      }
+
+      const delBtn = card.querySelector(".del-sub-btn");
+      if (delBtn) {
+        delBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          if (confirm(`Удалить подписку "${sub.name}" и все связанные серверы?`)) {
+            await window.api.deleteSubscription(sub.id);
+            appState = await window.api.getStatus();
+            renderAppState(appState);
+            loadServers();
+            loadSubscriptions();
+          }
+        });
+      }
+
+      subsList.appendChild(card);
+    });
+  }
+
+  // Обновление всех подписок оптом
+  async function triggerUpdateAllSubscriptions(btn) {
+    if (btn) {
+      btn.disabled = true;
+      const spin = btn.querySelector(".spin-icon");
+      if (spin) spin.classList.add("spinning");
+    }
+
+    try {
+      const res = await window.api.updateAllSubscriptions();
+      if (res.success) {
+        appState = await window.api.getStatus();
+        renderAppState(appState);
+        loadServers();
+        loadSubscriptions();
+      } else {
+        alert(res.error || "Не удалось обновить подписки");
+      }
+    } catch (err) {
+      alert("Ошибка обновления подписок: " + err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        const spin = btn.querySelector(".spin-icon");
+        if (spin) spin.classList.remove("spinning");
+      }
+    }
+  }
+
+  if (dashUpdateSubsBtn) {
+    dashUpdateSubsBtn.addEventListener("click", () => triggerUpdateAllSubscriptions(dashUpdateSubsBtn));
+  }
+  if (refreshAllSubsTopBtn) {
+    refreshAllSubsTopBtn.addEventListener("click", () => triggerUpdateAllSubscriptions(refreshAllSubsTopBtn));
+  }
+  if (dashGoServersTabBtn) {
+    dashGoServersTabBtn.addEventListener("click", () => {
+      const srvTab = document.querySelector('.nav-item[data-tab="servers"]');
+      if (srvTab) srvTab.click();
+    });
+  }
+
   // Кнопка добавления сервера из вкладки Серверы
   if (addServerFromServersTabBtn) {
     addServerFromServersTabBtn.addEventListener("click", async () => {
@@ -386,6 +648,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           appState = await window.api.getStatus();
           renderAppState(appState);
           loadServers();
+          loadSubscriptions();
           alert(`Успешно добавлено узлов: ${res.count || 1}`);
         } else {
           alert("Ошибка добавления: " + (res.error || "Неподдерживаемый формат"));
@@ -404,10 +667,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     Object.keys(results).forEach((id) => {
       const el = document.getElementById(`ping_${id}`);
+      const dashEl = document.getElementById(`dash_ping_${id}`);
+      const ms = results[id];
+      const tagClass = "ping-tag " + (ms < 120 ? "fast" : (ms < 300 ? "medium" : "slow"));
       if (el) {
-        const ms = results[id];
         el.textContent = `${ms} ms`;
-        el.className = "ping-tag " + (ms < 120 ? "fast" : (ms < 300 ? "medium" : "slow"));
+        el.className = tagClass;
+      }
+      if (dashEl) {
+        dashEl.textContent = `${ms} ms`;
+        dashEl.className = tagClass;
       }
     });
   });
@@ -422,6 +691,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       appState = await window.api.getStatus();
       renderAppState(appState);
       loadServers();
+      loadSubscriptions();
     }
   });
 
@@ -533,6 +803,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     appState = state;
     renderAppState(state);
     loadServers();
+    loadSubscriptions();
   });
 
   // ==================== ТАЙМЕР СЕССИИ ====================

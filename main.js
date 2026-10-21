@@ -45,7 +45,7 @@ try {
 
 // Миграция файлов из старых папок (resources/app, C:\лаунчер и т.д.)
 function migrateOldStorageFiles() {
-  const files = ["servers_history.json", "settings.json", "domains_list.json"];
+  const files = ["servers_history.json", "settings.json", "domains_list.json", "subscriptions.json"];
   const candidateDirs = [
     path.join(process.env.APPDATA || "", "untitled-stealth"),
     path.join(process.env.LOCALAPPDATA || "", "Programs", "UntitledStealth", "resources", "app"),
@@ -78,6 +78,7 @@ const CORE_DIR = path.join(__dirname, "core");
 const CORE_EXE = path.join(CORE_DIR, "sing-box.exe");
 const CONFIG_FILE = path.join(CORE_DIR, "config.json");
 const STORAGE_FILE = path.join(USER_DATA_DIR, "servers_history.json");
+const SUBSCRIPTIONS_FILE = path.join(USER_DATA_DIR, "subscriptions.json");
 const DOMAINS_FILE = path.join(USER_DATA_DIR, "domains_list.json");
 const SETTINGS_FILE = path.join(USER_DATA_DIR, "settings.json");
 const ICON_PATH = path.join(__dirname, "icons", "app.ico");
@@ -225,6 +226,49 @@ function saveDomainsList(domains) {
     }
   } catch (e) {
     console.error("Ошибка сохранения доменов:", e);
+  }
+}
+
+// ==================== ХРАНИЛИЩЕ ПОДПИСОК ====================
+function parseSubscriptionUserinfo(headerVal) {
+  if (!headerVal) return null;
+  const parts = headerVal.split(";");
+  const info = {};
+  for (const p of parts) {
+    const pair = p.trim().split("=");
+    if (pair.length === 2) {
+      info[pair[0].toLowerCase()] = parseInt(pair[1], 10) || 0;
+    }
+  }
+  const upload = info.upload || 0;
+  const download = info.download || 0;
+  const total = info.total || 0;
+  const expire = info.expire ? info.expire * 1000 : null;
+  return {
+    upload,
+    download,
+    used: upload + download,
+    total,
+    expire
+  };
+}
+
+function getSavedSubscriptions() {
+  try {
+    if (fs.existsSync(SUBSCRIPTIONS_FILE)) {
+      return JSON.parse(fs.readFileSync(SUBSCRIPTIONS_FILE, "utf-8"));
+    }
+  } catch (e) {
+    console.error("Ошибка чтения подписок:", e);
+  }
+  return [];
+}
+
+function saveSubscriptionsList(subs) {
+  try {
+    fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(subs, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Ошибка сохранения подписок:", e);
   }
 }
 
@@ -762,7 +806,7 @@ function startSingBox(outbound) {
     dns: {
       servers: [
         { tag: "remote-dns", type: "udp", server: "1.1.1.1", detour: "proxy" },
-        { tag: "local-dns", type: "udp", server: "77.88.8.8", detour: "direct" }
+        { tag: "local-dns", type: "udp", server: "77.88.8.8" }
       ],
       rules: dnsRules,
       final: appState.mode === "smart" ? "local-dns" : "remote-dns",
@@ -985,40 +1029,88 @@ async function importServerOrSubscription(urlOrData) {
 
   // 1. Подписка по HTTP / HTTPS
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    try {
-      const res = await fetch(trimmed, {
-        headers: {
-          "User-Agent": "v2rayN/6.23",
-          "Accept": "*/*"
-        }
-      });
-      if (res.ok) {
-        const text = await res.text();
-        let decoded = text.trim();
-        if (!decoded.includes("://")) {
-          try {
-            decoded = Buffer.from(decoded, "base64").toString("utf-8");
-          } catch {}
-        }
-
-        const lines = decoded.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && l.includes("://"));
-        if (lines.length > 0) {
-          const parsedList = [];
-          for (const line of lines) {
-            try {
-              const s = parseLink(line);
-              parsedList.push(s);
-            } catch {}
-          }
-          if (parsedList.length > 0) {
-            saveMultipleServersToHistory(parsedList);
-            pushLog(`В подписке найдено и сохранено узлов: ${parsedList.length}`);
-            return parsedList;
-          }
-        }
+    const res = await fetch(trimmed, {
+      headers: {
+        "User-Agent": "v2rayN/6.23; sing-box/1.14",
+        "Accept": "*/*"
       }
-    } catch (e) {
-      // Игнорируем и пробуем распарсить как одиночный узел
+    });
+
+    if (!res.ok) {
+      throw new Error(`Ошибка загрузки подписки: HTTP ${res.status} ${res.statusText}`);
+    }
+
+    const userinfoRaw = res.headers.get("subscription-userinfo") || res.headers.get("Subscription-Userinfo");
+    const userinfo = parseSubscriptionUserinfo(userinfoRaw);
+
+    let subTitle = res.headers.get("profile-title") || "";
+    if (!subTitle) {
+      const cd = res.headers.get("content-disposition") || "";
+      const match = cd.match(/filename\*?=['"]?(?:UTF-8'')?([^"';]+)['"]?/i);
+      if (match) subTitle = decodeURIComponent(match[1]);
+    }
+    if (!subTitle) {
+      try {
+        const u = new URL(trimmed);
+        subTitle = u.hostname;
+      } catch {
+        subTitle = "Подписка";
+      }
+    }
+
+    const text = await res.text();
+    let decoded = text.trim();
+    if (!decoded.includes("://")) {
+      try {
+        decoded = Buffer.from(decoded, "base64").toString("utf-8");
+      } catch {}
+    }
+
+    const lines = decoded.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && l.includes("://"));
+    if (lines.length === 0) {
+      throw new Error("В подписке не обнаружено серверов");
+    }
+
+    // Сохраняем метаданные подписки
+    const subs = getSavedSubscriptions();
+    let sub = subs.find((s) => s.url === trimmed);
+    const subId = sub ? sub.id : ("sub_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4));
+
+    if (!sub) {
+      sub = {
+        id: subId,
+        url: trimmed,
+        name: subTitle,
+        lastUpdated: Date.now(),
+        userinfo: userinfo,
+        serverCount: lines.length
+      };
+      subs.unshift(sub);
+    } else {
+      sub.name = subTitle || sub.name;
+      sub.lastUpdated = Date.now();
+      sub.userinfo = userinfo || sub.userinfo;
+      sub.serverCount = lines.length;
+    }
+    saveSubscriptionsList(subs);
+
+    const parsedList = [];
+    for (const line of lines) {
+      try {
+        const s = parseLink(line);
+        s.subscriptionId = subId;
+        parsedList.push(s);
+      } catch {}
+    }
+
+    if (parsedList.length > 0) {
+      let currentServers = getSavedServers().filter((s) => s.subscriptionId !== subId);
+      currentServers = [...parsedList, ...currentServers];
+      if (currentServers.length > 300) currentServers = currentServers.slice(0, 300);
+      fs.writeFileSync(STORAGE_FILE, JSON.stringify(currentServers, null, 2), "utf-8");
+
+      pushLog(`Подписка "${sub.name}" успешно обновлена: загружено ${parsedList.length} узлов`);
+      return parsedList;
     }
   }
 
@@ -1027,6 +1119,77 @@ async function importServerOrSubscription(urlOrData) {
   saveServerToHistory(server);
   pushLog(`Сохранен узел: ${server.name} (${server.protocol})`);
   return [server];
+}
+
+async function updateAllSubscriptions() {
+  const subs = getSavedSubscriptions();
+  if (subs.length === 0) {
+    return { success: false, error: "У вас пока нет сохраненных ссылок на подписки" };
+  }
+
+  let totalNodes = 0;
+  const errors = [];
+
+  for (const sub of subs) {
+    try {
+      pushLog(`Обновление подписки: ${sub.name}...`);
+      const nodes = await importServerOrSubscription(sub.url);
+      totalNodes += nodes.length;
+    } catch (err) {
+      errors.push(`${sub.name}: ${err.message}`);
+      pushLog(`Ошибка обновления подписки ${sub.name}: ${err.message}`);
+    }
+  }
+
+  if (appState.activeServer) {
+    const freshServers = getSavedServers();
+    const updatedActive = freshServers.find((s) => s.id === appState.activeServer.id || s.rawUrl === appState.activeServer.rawUrl);
+    if (updatedActive) {
+      appState.activeServer = updatedActive;
+      saveSettings();
+    }
+  }
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("status:update", appState);
+  }
+
+  return {
+    success: errors.length < subs.length,
+    updatedCount: totalNodes,
+    errors: errors,
+    subscriptions: getSavedSubscriptions(),
+    servers: getSavedServers()
+  };
+}
+
+async function updateSingleSubscription(subId) {
+  const subs = getSavedSubscriptions();
+  const sub = subs.find((s) => s.id === subId);
+  if (!sub) throw new Error("Подписка не найдена");
+  const nodes = await importServerOrSubscription(sub.url);
+  return {
+    success: true,
+    nodesCount: nodes.length,
+    subscriptions: getSavedSubscriptions(),
+    servers: getSavedServers()
+  };
+}
+
+function deleteSubscription(subId) {
+  let subs = getSavedSubscriptions().filter((s) => s.id !== subId);
+  saveSubscriptionsList(subs);
+  let servers = getSavedServers().filter((s) => s.subscriptionId !== subId);
+  fs.writeFileSync(STORAGE_FILE, JSON.stringify(servers, null, 2), "utf-8");
+  if (appState.activeServer && appState.activeServer.subscriptionId === subId) {
+    handleDisconnect();
+    appState.activeServer = servers.length > 0 ? servers[0] : null;
+    saveSettings();
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("status:update", appState);
+  }
+  return { subscriptions: subs, servers: servers };
 }
 
 // ==================== ЛОГИКА ПОДКЛЮЧЕНИЯ/ОТКЛЮЧЕНИЯ ====================
@@ -1250,12 +1413,22 @@ ipcMain.handle("core:set-active", (event, serverId) => {
   const list = getSavedServers();
   const found = list.find((s) => s.id === serverId);
   if (found) {
+    const wasConnected = appState.connected;
     appState.activeServer = found;
     saveSettings();
+
+    if (wasConnected) {
+      pushLog(`Переключение на узел: ${found.name}...`);
+      startSingBox(found.outbound);
+      if (appState.systemProxy) {
+        enableWindowsSystemProxy(appState.mode);
+      }
+    }
+
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("status:update", appState);
     }
-    return { success: true, server: found };
+    return { success: true, server: found, reconnected: wasConnected };
   }
   return { success: false };
 });
@@ -1296,6 +1469,23 @@ ipcMain.handle("storage:delete-server", (event, id) => {
     }
   }
   return remaining;
+});
+
+// ==================== IPC ПОДПИСКИ ====================
+ipcMain.handle("subscriptions:get", () => {
+  return getSavedSubscriptions();
+});
+
+ipcMain.handle("subscriptions:update-all", async () => {
+  return await updateAllSubscriptions();
+});
+
+ipcMain.handle("subscriptions:update", async (event, id) => {
+  return await updateSingleSubscription(id);
+});
+
+ipcMain.handle("subscriptions:delete", (event, id) => {
+  return deleteSubscription(id);
 });
 
 ipcMain.handle("settings:set-autoconnect", (event, enabled) => {
